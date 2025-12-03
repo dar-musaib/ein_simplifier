@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EIN Names Viewer & Editor</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f3f4f6;
+    margin: 0;
+    padding: 0;
+}
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+}
+h1 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+.subtitle {
+    text-align: center;
+    color: #555;
+    margin-bottom: 20px;
+}
+
+.main-content {
+    display: flex;
+    gap: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+}
+.main-content.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.sidebar {
+    width: 250px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.select-wrapper select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 5px;
+}
+.nav-buttons {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+.content-area {
+    flex: 1;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+.metric-card {
+    background: #f0f0f0;
+    padding: 12px;
+    border-radius: 6px;
+    text-align: center;
+}
+.metric-label {
+    font-size: 12px;
+    color: #666;
+}
+.metric-value {
+    font-size: 20px;
+    font-weight: bold;
+}
+.metrics {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+.names-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 6px;
+    background: #fafafa;
+}
+.name-item {
+    padding: 6px;
+    margin: 4px 0;
+    background: white;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.name-item input[type="checkbox"] {
+    cursor: pointer;
+}
+.name-item label {
+    cursor: pointer;
+    flex: 1;
+    margin: 0;
+}
+.selection-controls {
+    margin: 10px 0;
+    display: flex;
+    gap: 10px;
+}
+.action-buttons {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+.btn {
+    padding: 10px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+}
+.btn-primary {
+    background: #2563eb;
+    color: white;
+}
+.btn-primary:hover {
+    background: #1d4ed8;
+}
+.btn-secondary {
+    background: #e5e7eb;
+    color: #111827;
+}
+.btn-secondary:hover {
+    background: #d1d5db;
+}
+.btn-danger {
+    background: #dc2626;
+    color: white;
+}
+.btn-danger:hover {
+    background: #b91c1c;
+}
+.input-group {
+    margin: 15px 0;
+}
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+.input-group input {
+    width: 100%;
+    padding: 8px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+.mode-toggle {
+    margin: 10px 0;
+    padding: 10px;
+    background: #fef3c7;
+    border-radius: 6px;
+    border: 2px solid #1042b8;
+}
+.mode-toggle strong {
+    color: #7552dea6;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>EIN Names Viewer & Editor</h1>
+    <p class="subtitle">Manage and edit company names for EIN records</p>
+
+    <div class="main-content" id="mainContent">
+        <div class="sidebar">
+            <h2>Select EIN</h2>
+            <div class="select-wrapper">
+                <select id="einSelect"></select>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" id="prevBtn">← Previous</button>
+                <button class="btn btn-secondary" id="nextBtn">Next →</button>
+            </div>
+        </div>
+
+        <div class="content-area">
+            <h2>Names for EIN: <span id="currentEIN"></span></h2>
+
+            <div class="metrics">
+                <div class="metric-card">
+                    <div class="metric-label">Total Names</div>
+                    <div class="metric-value" id="totalNames">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Selected</div>
+                    <div class="metric-value" id="selectedCount">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">New Name Set</div>
+                    <div class="metric-value" id="newNameStatus">No</div>
+                </div>
+            </div>
+
+            <div class="mode-toggle">
+                <strong>Mode: Mark Names for Review</strong><br>
+                <small>✓ Check names that need attention or review.</small>
+            </div>
+
+            <h3 style="margin-bottom: 15px;">All Names (check to mark for review):</h3>
+
+            <div class="selection-controls">
+                <button class="btn btn-secondary" id="selectAllBtn">Mark All</button>
+                <button class="btn btn-secondary" id="deselectAllBtn">Unmark All</button>
+            </div>
+
+            <div class="names-list" id="namesList"></div>
+
+            <div class="input-group">
+                <label for="companyNameInput">Enter Official Company Name:</label>
+                <input type="text" id="companyNameInput" placeholder="Enter the official company name">
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="saveBtn">💾 Save Changes</button>
+                <!-- <button class="btn btn-secondary" id="resetBtn">↺ Reset</button> -->
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+const API_URL = 'http://localhost:8000';
+let currentEINData = null;
+let allEINs = [];
+let currentIndex = 0;
+
+const mainContent = document.getElementById('mainContent');
+const einSelect = document.getElementById('einSelect');
+const namesList = document.getElementById('namesList');
+const companyNameInput = document.getElementById('companyNameInput');
+
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const statsResp = await fetch(`${API_URL}/stats`);
+        if (!statsResp.ok) throw new Error('Failed to fetch stats');
+
+        const stats = await statsResp.json();
+
+        if (!stats.has_saved_data) {
+            alert("No working_data.csv found. The server will auto-load from files/unique_ein_spons.csv.");
+        }
+
+        await loadEINs();
+        mainContent.classList.add('active');
+    } catch (error) {
+        alert(error.message);
+    }
+});
+
+async function loadEINs() {
+    const resp = await fetch(`${API_URL}/eins`);
+    allEINs = await resp.json();
+
+    const fragment = document.createDocumentFragment();
+    allEINs.forEach(e => {
+        const option = document.createElement('option');
+        option.value = e.ein;
+        option.textContent = `${e.ein}${e.is_edited ? " ✔" : ""}`;
+        fragment.appendChild(option);
+    });
+
+    einSelect.innerHTML = '';
+    einSelect.appendChild(fragment);
+
+    currentIndex = 0;
+    einSelect.selectedIndex = 0;
+    await loadEINData();
+}
+
+einSelect.addEventListener('change', async () => {
+    currentIndex = einSelect.selectedIndex;
+    await loadEINData();
+});
+
+async function loadEINData() {
+    const ein = allEINs[currentIndex].ein;
+    const resp = await fetch(`${API_URL}/ein/${ein}`);
+    currentEINData = await resp.json();
+
+    document.getElementById('currentEIN').textContent = ein;
+    document.getElementById('totalNames').textContent = currentEINData.total_names;
+
+    // OPTIMIZED: Use DocumentFragment for batch DOM insertion
+    const fragment = document.createDocumentFragment();
+    const markedSet = new Set(currentEINData.marked_names || []);
+    
+    currentEINData.unique_names_v2.forEach((name, idx) => {
+        const div = document.createElement('div');
+        div.className = 'name-item';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = name;
+        checkbox.id = `name_${idx}`;
+        checkbox.checked = markedSet.has(name); // Restore marked state
+        
+        const label = document.createElement('label');
+        label.htmlFor = `name_${idx}`;
+        label.textContent = name;
+        
+        div.appendChild(checkbox);
+        div.appendChild(label);
+        fragment.appendChild(div);
+    });
+
+    namesList.innerHTML = '';
+    namesList.appendChild(fragment);
+
+    companyNameInput.value = currentEINData.new_name ?? "";
+    document.getElementById('newNameStatus').textContent =
+        currentEINData.new_name ? "Yes" : "No";
+
+    updateSelectedCount();
+}
+
+// OPTIMIZED: Debounced count update
+let countUpdateTimeout;
+function updateSelectedCount() {
+    clearTimeout(countUpdateTimeout);
+    countUpdateTimeout = setTimeout(() => {
+        const checked = namesList.querySelectorAll('input[type="checkbox"]:checked').length;
+        document.getElementById('selectedCount').textContent = checked;
+    }, 50);
+}
+
+// Use event delegation for better performance
+namesList.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox') {
+        updateSelectedCount();
+    }
+});
+
+// OPTIMIZED: Direct property manipulation, no reflow
+document.getElementById('selectAllBtn').addEventListener('click', () => {
+    const boxes = namesList.querySelectorAll('input[type="checkbox"]');
+    boxes.forEach(b => b.checked = true);
+    updateSelectedCount();
+});
+
+document.getElementById('deselectAllBtn').addEventListener('click', () => {
+    const boxes = namesList.querySelectorAll('input[type="checkbox"]');
+    boxes.forEach(b => b.checked = false);
+    updateSelectedCount();
+});
+
+document.getElementById('prevBtn').addEventListener('click', async () => {
+    if (currentIndex > 0) {
+        currentIndex--;
+        einSelect.selectedIndex = currentIndex;
+        await loadEINData();
+    }
+});
+
+document.getElementById('nextBtn').addEventListener('click', async () => {
+    if (currentIndex < allEINs.length - 1) {
+        currentIndex++;
+        einSelect.selectedIndex = currentIndex;
+        await loadEINData();
+    }
+});
+
+// document.getElementById('resetBtn').addEventListener('click', loadEINData);
+
+// FIXED: Now just tracks marked names, doesn't remove anything
+document.getElementById('saveBtn').addEventListener('click', async () => {
+    const ein = allEINs[currentIndex].ein;
+
+    // Get CHECKED names (these are just marked for review)
+    const allCheckboxes = namesList.querySelectorAll('input[type="checkbox"]');
+    const markedNames = [];
+    
+    allCheckboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            markedNames.push(checkbox.value);
+        }
+    });
+
+    const newName = companyNameInput.value.trim();
+
+    if (!newName && markedNames.length === 0) {
+        alert('Please either enter a company name or mark some names for review.');
+        return;
+    }
+
+    const payload = {
+        spons_dfe_ein: ein,
+        marked_names: markedNames,  // Just tracking marked names
+        new_name: newName || null
+    };
+
+    try {
+        const resp = await fetch(`${API_URL}/ein/${ein}/save`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await resp.json();
+        alert(result.message);
+
+        // Update UI
+        allEINs[currentIndex].is_edited = true;
+        einSelect.options[currentIndex].textContent = `${ein} ✔`;
+        
+        // Reload data to show updated state
+        await loadEINData();
+    } catch (error) {
+        alert('Error saving changes: ' + error.message);
+    }
+});
+</script>
+
+</body>
+</html>
