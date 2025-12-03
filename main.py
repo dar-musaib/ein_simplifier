@@ -1,23 +1,34 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import pandas as pd
 import json
 import os
+import logging
+import ast
 from pathlib import Path
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="EIN Names Editor API")
 
-# Enable CORS for frontend
+# CORS configuration - use environment variable for production
+cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
+if cors_origins == ["*"]:
+    logger.warning("CORS is set to allow all origins. Set CORS_ORIGINS env var for production!")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -60,17 +71,19 @@ def parse_names(x):
     if isinstance(x, list):
         return x
     if isinstance(x, str):
-        # Try JSON first (fastest)
+        # Try JSON first (fastest and safest)
         if x.startswith('['):
             try:
                 return json.loads(x)
-            except:
-                pass
-        # Fallback to eval only if needed
+            except json.JSONDecodeError as e:
+                logger.warning(f"Failed to parse JSON: {e}")
+                return []
+        # Try ast.literal_eval as safe alternative to eval
         try:
-            result = eval(x)
+            result = ast.literal_eval(x)
             return result if isinstance(result, list) else []
-        except:
+        except (ValueError, SyntaxError) as e:
+            logger.warning(f"Failed to parse list string: {e}")
             return []
     return []
 
@@ -104,14 +117,14 @@ def load_working_file():
         return True
 
     except Exception as e:
-        print(f"Error loading working file: {e}")
+        logger.error(f"Error loading working file: {e}", exc_info=True)
         return False
 
 
 def load_source_file():
     """Load from initial files/unique_ein_spons.csv - OPTIMIZED"""
     if not SOURCE_FILE.exists():
-        print("ERROR: Source CSV missing in /files/")
+        logger.error(f"Source CSV missing: {SOURCE_FILE}")
         return False
 
     try:
@@ -134,11 +147,11 @@ def load_source_file():
         # Immediately save initial version to working_data.csv
         save_to_disk()
 
-        print(f"✓ Loaded source CSV and created {WORKING_FILE.name}")
+        logger.info(f"Loaded source CSV and created {WORKING_FILE.name}")
         return True
 
     except Exception as e:
-        print(f"Error loading source CSV: {e}")
+        logger.error(f"Error loading source CSV: {e}", exc_info=True)
         return False
 
 
@@ -173,24 +186,24 @@ def save_to_disk():
         
         return True
     except Exception as e:
-        print(f"Error saving working file: {e}")
+        logger.error(f"Error saving working file: {e}", exc_info=True)
         return False
 
 
 @app.on_event("startup")
 async def startup_event():
     """Load working file if exists, otherwise load from source"""
-    print(f"Using source file: {SOURCE_FILE}")
-    print(f"Using working file: {WORKING_FILE}")
-    print(f"Using metadata file: {METADATA_FILE}")
+    logger.info(f"Using source file: {SOURCE_FILE}")
+    logger.info(f"Using working file: {WORKING_FILE}")
+    logger.info(f"Using metadata file: {METADATA_FILE}")
     
     if WORKING_FILE.exists():
         if load_working_file():
-            print(f"✓ Loaded existing {WORKING_FILE.name}")
+            logger.info(f"Loaded existing {WORKING_FILE.name}")
         else:
-            print(f"ERROR loading {WORKING_FILE.name}")
+            logger.error(f"Failed to load {WORKING_FILE.name}")
     else:
-        print(f"{WORKING_FILE.name} not found → loading source CSV")
+        logger.info(f"{WORKING_FILE.name} not found → loading source CSV")
         load_source_file()
 
 
@@ -384,6 +397,33 @@ async def api_info():
     }
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for monitoring"""
+    has_data = "df" in data_store
+    status = "healthy" if has_data else "degraded"
+    
+    return {
+        "status": status,
+        "data_loaded": has_data,
+        "working_file_exists": WORKING_FILE.exists(),
+        "source_file_exists": SOURCE_FILE.exists()
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # Production settings from environment
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    workers = int(os.getenv("WORKERS", "1"))  # Use 1 for development, 4+ for production
+    reload = os.getenv("RELOAD", "false").lower() == "true"
+    
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        workers=workers if not reload else 1,  # Workers and reload are incompatible
+        reload=reload,
+        log_level=os.getenv("LOG_LEVEL", "info").lower()
+    )

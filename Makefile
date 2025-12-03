@@ -1,4 +1,4 @@
-.PHONY: help install run dev clean reset format lint check test open list-files
+.PHONY: help install run dev clean reset format lint check test open list-files docker-build docker-up docker-down docker-logs docker-restart docker-shell docker-status
 
 # Variables
 PYTHON := python3
@@ -32,6 +32,15 @@ help:
 	@echo "  make open       - Open frontend in default browser (server must be running)"
 	@echo "  make serve-frontend - Serve frontend on port 8080 (alternative method)"
 	@echo "  make test       - Run API health check"
+	@echo ""
+	@echo "Docker commands:"
+	@echo "  make docker-build  - Build Docker image"
+	@echo "  make docker-up    - Start container"
+	@echo "  make docker-down  - Stop and remove container"
+	@echo "  make docker-logs  - View container logs"
+	@echo "  make docker-restart - Restart container"
+	@echo "  make docker-shell - Open shell in running container"
+	@echo "  make docker-status - Check container status"
 	@echo "  make help       - Show this help message"
 	@echo ""
 	@echo "File Configuration (via environment variables):"
@@ -158,5 +167,107 @@ test:
 		curl -s http://localhost:$(PORT)/ | python3 -m json.tool || echo "✗ Server not running"; \
 	else \
 		echo "⚠ curl not available. Please test manually at http://localhost:$(PORT)/"; \
+	fi
+
+# Docker commands (using plain Docker, not docker-compose)
+CONTAINER_NAME := ein-simplifier
+IMAGE_NAME := ein-simplifier
+PORT := 8000
+
+docker-build:
+	@echo "Building Docker image..."
+	@if command -v docker > /dev/null; then \
+		docker build -t $(IMAGE_NAME) .; \
+		echo "✓ Image built successfully"; \
+	else \
+		echo "✗ Docker not found. Please install Docker."; \
+		exit 1; \
+	fi
+
+docker-up:
+	@echo "Starting container..."
+	@if command -v docker > /dev/null; then \
+		if docker ps -a --format '{{.Names}}' | grep -q "^$(CONTAINER_NAME)$$"; then \
+			echo "Removing existing container..."; \
+			docker rm -f $(CONTAINER_NAME) 2>/dev/null || true; \
+		fi; \
+		if [ -f .env ]; then \
+			export $$(cat .env | grep -v '^#' | xargs); \
+		fi; \
+		docker run -d \
+			--name $(CONTAINER_NAME) \
+			--restart unless-stopped \
+			-p $(PORT):8000 \
+			-v "$(PWD)/storage:/app/storage" \
+			-v "$(PWD)/files:/app/files" \
+			-e HOST=0.0.0.0 \
+			-e PORT=8000 \
+			-e WORKERS=$${WORKERS:-4} \
+			-e RELOAD=$${RELOAD:-false} \
+			-e LOG_LEVEL=$${LOG_LEVEL:-info} \
+			-e CORS_ORIGINS="$${CORS_ORIGINS:-*}" \
+			-e STORAGE_DIR=/app/storage \
+			-e SOURCE_FILE=/app/files/unique_ein_spons.csv \
+			-e WORKING_FILE=/app/storage/working_data.csv \
+			$(IMAGE_NAME); \
+		echo "✓ Container started on port $(PORT)"; \
+		echo "  Access at: http://localhost:$(PORT)"; \
+	else \
+		echo "✗ Docker not found. Please install Docker."; \
+		exit 1; \
+	fi
+
+docker-down:
+	@echo "Stopping container..."
+	@if command -v docker > /dev/null; then \
+		docker stop $(CONTAINER_NAME) 2>/dev/null || echo "Container not running"; \
+		docker rm $(CONTAINER_NAME) 2>/dev/null || echo "Container not found"; \
+		echo "✓ Container stopped and removed"; \
+	else \
+		echo "✗ Docker not found. Please install Docker."; \
+		exit 1; \
+	fi
+
+docker-logs:
+	@echo "Viewing container logs (Ctrl+C to exit)..."
+	@if command -v docker > /dev/null; then \
+		docker logs -f $(CONTAINER_NAME) 2>/dev/null || echo "✗ Container not found. Start it with: make docker-up"; \
+	else \
+		echo "✗ Docker not found. Please install Docker."; \
+		exit 1; \
+	fi
+
+docker-restart:
+	@echo "Restarting container..."
+	@if command -v docker > /dev/null; then \
+		$(MAKE) docker-down; \
+		$(MAKE) docker-up; \
+		echo "✓ Container restarted"; \
+	else \
+		echo "✗ Docker not found. Please install Docker."; \
+		exit 1; \
+	fi
+
+docker-shell:
+	@echo "Opening shell in container..."
+	@if command -v docker > /dev/null; then \
+		docker exec -it $(CONTAINER_NAME) /bin/bash || docker exec -it $(CONTAINER_NAME) /bin/sh || echo "✗ Container not running. Start it with: make docker-up"; \
+	else \
+		echo "✗ Docker not found. Please install Docker."; \
+		exit 1; \
+	fi
+
+docker-status:
+	@echo "Container status:"
+	@if command -v docker > /dev/null; then \
+		if docker ps --format '{{.Names}}' | grep -q "^$(CONTAINER_NAME)$$"; then \
+			echo "✓ Container is running"; \
+			docker ps --filter "name=$(CONTAINER_NAME)" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"; \
+		else \
+			echo "✗ Container is not running"; \
+		fi; \
+	else \
+		echo "✗ Docker not found. Please install Docker."; \
+		exit 1; \
 	fi
 
