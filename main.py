@@ -1,9 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import pandas as pd
 import json
+import os
 from pathlib import Path
 
 
@@ -18,13 +21,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# File paths
-STORAGE_DIR = Path("storage")
+# File paths - configurable via environment variables
+STORAGE_DIR = Path(os.getenv("STORAGE_DIR", "storage"))
 STORAGE_DIR.mkdir(exist_ok=True)
 
-WORKING_FILE = STORAGE_DIR / "working_data.csv"
-SOURCE_FILE = Path("files/unique_ein_spons.csv")
-METADATA_FILE = STORAGE_DIR / "metadata.json"
+# Source file path (can be overridden via SOURCE_FILE env var)
+SOURCE_FILE = Path(os.getenv("SOURCE_FILE", "files/unique_ein_spons.csv"))
+
+# Working file path (can be overridden via WORKING_FILE env var)
+# If WORKING_FILE is set, use it directly; otherwise use storage dir
+working_file_path = os.getenv("WORKING_FILE")
+if working_file_path:
+    WORKING_FILE = Path(working_file_path)
+else:
+    WORKING_FILE = STORAGE_DIR / "working_data.csv"
+
+# Metadata file path (derived from working file location)
+METADATA_FILE = WORKING_FILE.parent / f"{WORKING_FILE.stem}_metadata.json"
 
 # In-memory store with caching
 data_store = {}
@@ -121,7 +134,7 @@ def load_source_file():
         # Immediately save initial version to working_data.csv
         save_to_disk()
 
-        print("✓ Loaded source CSV and created working_data.csv")
+        print(f"✓ Loaded source CSV and created {WORKING_FILE.name}")
         return True
 
     except Exception as e:
@@ -166,14 +179,18 @@ def save_to_disk():
 
 @app.on_event("startup")
 async def startup_event():
-    """Load working_data.csv if exists, otherwise load from source"""
+    """Load working file if exists, otherwise load from source"""
+    print(f"Using source file: {SOURCE_FILE}")
+    print(f"Using working file: {WORKING_FILE}")
+    print(f"Using metadata file: {METADATA_FILE}")
+    
     if WORKING_FILE.exists():
         if load_working_file():
-            print("✓ Loaded existing working_data.csv")
+            print(f"✓ Loaded existing {WORKING_FILE.name}")
         else:
-            print("ERROR loading working_data.csv")
+            print(f"ERROR loading {WORKING_FILE.name}")
     else:
-        print("working_data.csv not found → loading source CSV")
+        print(f"{WORKING_FILE.name} not found → loading source CSV")
         load_source_file()
 
 
@@ -182,19 +199,40 @@ async def startup_event():
 # ------------------------------
 
 @app.get("/eins")
-async def get_all_eins():
-    """Return list of all EINs with edit status - OPTIMIZED"""
+async def get_all_eins(page: int = 1, page_size: int = 20):
+    """Return paginated list of EINs with edit status - OPTIMIZED"""
     if "df" not in data_store:
         raise HTTPException(status_code=400, detail="Data not loaded")
     
     df = data_store["df"]
     edited = data_store["edited_eins"]
     
-    # Use list comprehension for speed
-    return [
-        {"ein": ein, "is_edited": ein in edited} 
-        for ein in df["spons_dfe_ein"].tolist()
-    ]
+    # Get all EINs
+    all_eins = df["spons_dfe_ein"].tolist()
+    total_count = len(all_eins)
+    
+    # Calculate pagination
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    
+    # Slice the list for pagination
+    paginated_eins = all_eins[start_idx:end_idx]
+    
+    # Build response with pagination metadata
+    return {
+        "items": [
+            {"ein": ein, "is_edited": ein in edited} 
+            for ein in paginated_eins
+        ],
+        "pagination": {
+            "page": page,
+            "page_size": page_size,
+            "total_count": total_count,
+            "total_pages": (total_count + page_size - 1) // page_size,  # Ceiling division
+            "has_next": end_idx < total_count,
+            "has_previous": page > 1
+        }
+    }
 
 
 @app.get("/ein/{ein}")
@@ -316,12 +354,33 @@ async def get_stats():
 
 @app.get("/")
 async def root():
+    """Serve the frontend HTML file"""
+    index_path = Path("index.html")
+    if index_path.exists():
+        return FileResponse(index_path)
+    else:
+        has_data = "df" in data_store
+        return {
+            "message": "EIN Names Editor API",
+            "version": "2.0.1 - Fixed",
+            "has_data_loaded": has_data,
+            "cached_eins": len(ein_cache),
+            "source_file": str(SOURCE_FILE),
+            "working_file": str(WORKING_FILE)
+        }
+
+
+@app.get("/api")
+async def api_info():
+    """API information endpoint"""
     has_data = "df" in data_store
     return {
         "message": "EIN Names Editor API",
         "version": "2.0.1 - Fixed",
         "has_data_loaded": has_data,
-        "cached_eins": len(ein_cache)
+        "cached_eins": len(ein_cache),
+        "source_file": str(SOURCE_FILE),
+        "working_file": str(WORKING_FILE)
     }
 
 

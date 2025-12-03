@@ -1,435 +1,864 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EIN Names Viewer & Editor</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EIN Names Viewer & Editor</title>
 
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: #f3f4f6;
-    margin: 0;
-    padding: 0;
-}
-.container {
-    max-width: 1200px;
-    margin: auto;
-    padding: 20px;
-}
-h1 {
-    text-align: center;
-    margin-bottom: 10px;
-}
-.subtitle {
-    text-align: center;
-    color: #555;
-    margin-bottom: 20px;
-}
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f3f4f6;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 1200px;
+        margin: auto;
+        padding: 20px;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 10px;
+      }
+      .subtitle {
+        text-align: center;
+        color: #555;
+        margin-bottom: 20px;
+      }
 
-.main-content {
-    display: flex;
-    gap: 20px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease-in-out;
-}
-.main-content.active {
-    opacity: 1;
-    pointer-events: auto;
-}
+      .main-content {
+        display: flex;
+        gap: 20px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease-in-out;
+      }
+      .main-content.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
 
-.sidebar {
-    width: 250px;
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-.select-wrapper select {
-    width: 100%;
-    padding: 8px;
-    border-radius: 5px;
-}
-.nav-buttons {
-    margin-top: 15px;
-    display: flex;
-    gap: 10px;
-}
+      .sidebar {
+        width: 250px;
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 100px);
+      }
+      .ein-list {
+        flex: 1;
+        overflow-y: auto;
+        margin-top: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background: #fafafa;
+        max-height: 500px;
+      }
+      .ein-item {
+        padding: 10px;
+        margin: 2px;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+      }
+      .ein-item:hover {
+        background: #f0f0f0;
+        border-color: #2563eb;
+      }
+      .ein-item.active {
+        background: #2563eb;
+        color: white;
+        border-color: #1d4ed8;
+        font-weight: 600;
+      }
+      .ein-item.active:hover {
+        background: #1d4ed8;
+      }
+      .nav-buttons {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+      }
 
-.content-area {
-    flex: 1;
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-.metric-card {
-    background: #f0f0f0;
-    padding: 12px;
-    border-radius: 6px;
-    text-align: center;
-}
-.metric-label {
-    font-size: 12px;
-    color: #666;
-}
-.metric-value {
-    font-size: 20px;
-    font-weight: bold;
-}
-.metrics {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
-}
-.names-list {
-    max-height: 400px;
-    overflow-y: auto;
-    border: 1px solid #ddd;
-    padding: 10px;
-    border-radius: 6px;
-    background: #fafafa;
-}
-.name-item {
-    padding: 6px;
-    margin: 4px 0;
-    background: white;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.name-item input[type="checkbox"] {
-    cursor: pointer;
-}
-.name-item label {
-    cursor: pointer;
-    flex: 1;
-    margin: 0;
-}
-.selection-controls {
-    margin: 10px 0;
-    display: flex;
-    gap: 10px;
-}
-.action-buttons {
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-}
-.btn {
-    padding: 10px 15px;
-    border-radius: 6px;
-    cursor: pointer;
-    border: none;
-    font-weight: 500;
-}
-.btn-primary {
-    background: #2563eb;
-    color: white;
-}
-.btn-primary:hover {
-    background: #1d4ed8;
-}
-.btn-secondary {
-    background: #e5e7eb;
-    color: #111827;
-}
-.btn-secondary:hover {
-    background: #d1d5db;
-}
-.btn-danger {
-    background: #dc2626;
-    color: white;
-}
-.btn-danger:hover {
-    background: #b91c1c;
-}
-.input-group {
-    margin: 15px 0;
-}
-.input-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 600;
-}
-.input-group input {
-    width: 100%;
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-}
-.mode-toggle {
-    margin: 10px 0;
-    padding: 10px;
-    background: #fef3c7;
-    border-radius: 6px;
-    border: 2px solid #1042b8;
-}
-.mode-toggle strong {
-    color: #7552dea6;
-}
-</style>
-</head>
+      .content-area {
+        flex: 1;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      .metric-card {
+        background: #f0f0f0;
+        padding: 12px;
+        border-radius: 6px;
+        text-align: center;
+      }
+      .metric-label {
+        font-size: 12px;
+        color: #666;
+      }
+      .metric-value {
+        font-size: 20px;
+        font-weight: bold;
+      }
+      .metrics {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+      }
+      .names-list {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 6px;
+        background: #fafafa;
+      }
+      .name-item {
+        padding: 6px;
+        margin: 4px 0;
+        background: white;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .name-item input[type="checkbox"] {
+        cursor: pointer;
+      }
+      .name-item label {
+        cursor: pointer;
+        flex: 1;
+        margin: 0;
+      }
+      .selection-controls {
+        margin: 10px 0;
+        display: flex;
+        gap: 10px;
+      }
+      .action-buttons {
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+      }
+      .btn {
+        padding: 10px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: none;
+        font-weight: 500;
+      }
+      .btn-primary {
+        background: #2563eb;
+        color: white;
+      }
+      .btn-primary:hover:not(:disabled) {
+        background: #1d4ed8;
+      }
+      .btn-primary:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+      .btn-secondary {
+        background: #e5e7eb;
+        color: #111827;
+      }
+      .btn-secondary:hover:not(:disabled) {
+        background: #d1d5db;
+      }
+      .btn-secondary:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+      .input-group {
+        margin: 15px 0;
+      }
+      .input-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+      }
+      .input-group input {
+        width: 100%;
+        padding: 8px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+      }
+      .mode-toggle {
+        margin: 10px 0;
+        padding: 10px;
+        background: #fef3c7;
+        border-radius: 6px;
+        border: 2px solid #1042b8;
+      }
+      .mode-toggle strong {
+        color: #7552dea6;
+      }
+      .loading-status {
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+        padding: 8px;
+        border-radius: 4px;
+        min-height: 20px;
+        transition: all 0.3s ease;
+      }
+      .loading-status.loading {
+        background: #e0f2fe;
+        color: #0369a1;
+        font-weight: 500;
+      }
+      .loading-status.error {
+        background: #fee2e2;
+        color: #dc2626;
+        font-weight: 500;
+      }
+      .loading-status.success {
+        background: #d1fae5;
+        color: #059669;
+        font-weight: 500;
+      }
+      .spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid #0369a1;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 0.8s linear infinite;
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .loading-status:empty {
+        display: none;
+      }
+      /* Toast/Popup Notification */
+      .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: white;
+        padding: 16px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        min-width: 300px;
+        max-width: 400px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transform: translateX(400px);
+        opacity: 0;
+        transition: all 0.3s ease;
+      }
+      .toast.show {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      .toast.success {
+        border-left: 4px solid #059669;
+      }
+      .toast.error {
+        border-left: 4px solid #dc2626;
+      }
+      .toast.info {
+        border-left: 4px solid #2563eb;
+      }
+      .toast-icon {
+        font-size: 24px;
+        flex-shrink: 0;
+      }
+      .toast.success .toast-icon {
+        color: #059669;
+      }
+      .toast.error .toast-icon {
+        color: #dc2626;
+      }
+      .toast.info .toast-icon {
+        color: #2563eb;
+      }
+      .toast-content {
+        flex: 1;
+      }
+      .toast-title {
+        font-weight: 600;
+        margin-bottom: 4px;
+        font-size: 14px;
+      }
+      .toast-message {
+        font-size: 13px;
+        color: #666;
+      }
+      .toast-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #999;
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .toast-close:hover {
+        color: #333;
+      }
+    </style>
+  </head>
 
-<body>
+  <body>
+    <div class="container">
+      <h1>EIN Names Viewer & Editor</h1>
+      <p class="subtitle">Manage and edit company names for EIN records</p>
 
-<div class="container">
-    <h1>EIN Names Viewer & Editor</h1>
-    <p class="subtitle">Manage and edit company names for EIN records</p>
-
-    <div class="main-content" id="mainContent">
+      <div class="main-content" id="mainContent">
         <div class="sidebar">
-            <h2>Select EIN</h2>
-            <div class="select-wrapper">
-                <select id="einSelect"></select>
-            </div>
-
-            <div class="nav-buttons">
-                <button class="btn btn-secondary" id="prevBtn">← Previous</button>
-                <button class="btn btn-secondary" id="nextBtn">Next →</button>
-            </div>
+          <h2>Select EIN</h2>
+          <div id="loadingStatus" class="loading-status"></div>
+          <div class="ein-list" id="einList"></div>
+          <div class="nav-buttons">
+            <button class="btn btn-secondary" id="prevPageBtn" style="flex: 1">
+              ← Previous Page
+            </button>
+            <button class="btn btn-secondary" id="nextPageBtn" style="flex: 1">
+              Next Page →
+            </button>
+          </div>
+          <div
+            id="pageInfo"
+            style="
+              margin-top: 10px;
+              font-size: 12px;
+              color: #666;
+              text-align: center;
+            "
+          ></div>
         </div>
 
         <div class="content-area">
-            <h2>Names for EIN: <span id="currentEIN"></span></h2>
+          <h2>Names for EIN: <span id="currentEIN"></span></h2>
 
-            <div class="metrics">
-                <div class="metric-card">
-                    <div class="metric-label">Total Names</div>
-                    <div class="metric-value" id="totalNames">0</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Selected</div>
-                    <div class="metric-value" id="selectedCount">0</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">New Name Set</div>
-                    <div class="metric-value" id="newNameStatus">No</div>
-                </div>
+          <div class="metrics">
+            <div class="metric-card">
+              <div class="metric-label">Total Names</div>
+              <div class="metric-value" id="totalNames">0</div>
             </div>
-
-            <div class="mode-toggle">
-                <strong>Mode: Mark Names for Review</strong><br>
-                <small>✓ Check names that need attention or review.</small>
+            <div class="metric-card">
+              <div class="metric-label">Selected</div>
+              <div class="metric-value" id="selectedCount">0</div>
             </div>
-
-            <h3 style="margin-bottom: 15px;">All Names (check to mark for review):</h3>
-
-            <div class="selection-controls">
-                <button class="btn btn-secondary" id="selectAllBtn">Mark All</button>
-                <button class="btn btn-secondary" id="deselectAllBtn">Unmark All</button>
+            <div class="metric-card">
+              <div class="metric-label">New Name Set</div>
+              <div class="metric-value" id="newNameStatus">No</div>
             </div>
+          </div>
 
-            <div class="names-list" id="namesList"></div>
+          <div class="mode-toggle">
+            <strong>Mode: Mark Names for Review</strong><br />
+            <small>✓ Check names that need attention or review.</small>
+          </div>
 
-            <div class="input-group">
-                <label for="companyNameInput">Enter Official Company Name:</label>
-                <input type="text" id="companyNameInput" placeholder="Enter the official company name">
-            </div>
+          <h3 style="margin-bottom: 15px">
+            All Names (check to mark for review):
+          </h3>
 
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="saveBtn">💾 Save Changes</button>
-                <!-- <button class="btn btn-secondary" id="resetBtn">↺ Reset</button> -->
-            </div>
+          <div class="selection-controls">
+            <button class="btn btn-secondary" id="selectAllBtn">
+              Mark All
+            </button>
+            <button class="btn btn-secondary" id="deselectAllBtn">
+              Unmark All
+            </button>
+          </div>
 
+          <div class="names-list" id="namesList"></div>
+
+          <div class="input-group">
+            <label for="companyNameInput">Enter Official Company Name:</label>
+            <input
+              type="text"
+              id="companyNameInput"
+              placeholder="Enter the official company name"
+            />
+          </div>
+
+          <div class="action-buttons">
+            <button class="btn btn-primary" id="saveBtn">
+              💾 Save Changes
+            </button>
+          </div>
         </div>
+      </div>
     </div>
-</div>
 
-<script>
-const API_URL = 'http://localhost:8000';
-let currentEINData = null;
-let allEINs = [];
-let currentIndex = 0;
+    <!-- Toast Notification Container -->
+    <div id="toastContainer"></div>
 
-const mainContent = document.getElementById('mainContent');
-const einSelect = document.getElementById('einSelect');
-const namesList = document.getElementById('namesList');
-const companyNameInput = document.getElementById('companyNameInput');
+    <script>
+      const API_URL = "http://localhost:8000";
+      const PAGE_SIZE = 20;
+      let currentEINData = null;
+      let allEINs = [];
+      let currentIndex = 0;
+      let currentPage = 1;
+      let totalPages = 1;
+      let isLoading = false;
 
-window.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const statsResp = await fetch(`${API_URL}/stats`);
-        if (!statsResp.ok) throw new Error('Failed to fetch stats');
+      const mainContent = document.getElementById("mainContent");
+      const einList = document.getElementById("einList");
+      const namesList = document.getElementById("namesList");
+      const companyNameInput = document.getElementById("companyNameInput");
+      const prevPageBtn = document.getElementById("prevPageBtn");
+      const nextPageBtn = document.getElementById("nextPageBtn");
+      const loadingStatus = document.getElementById("loadingStatus");
+      const pageInfo = document.getElementById("pageInfo");
+      const toastContainer = document.getElementById("toastContainer");
 
-        const stats = await statsResp.json();
+      // Toast notification function
+      function showToast(message, type = "success", duration = 3000) {
+        // Remove existing toasts
+        const existingToasts = toastContainer.querySelectorAll(".toast");
+        existingToasts.forEach((toast) => toast.remove());
 
-        if (!stats.has_saved_data) {
-            alert("No working_data.csv found. The server will auto-load from files/unique_ein_spons.csv.");
+        const toast = document.createElement("div");
+        toast.className = `toast ${type}`;
+
+        const icons = {
+          success: "✓",
+          error: "✕",
+          info: "ℹ",
+        };
+
+        const titles = {
+          success: "Success",
+          error: "Error",
+          info: "Info",
+        };
+
+        toast.innerHTML = `
+          <div class="toast-icon">${icons[type] || icons.info}</div>
+          <div class="toast-content">
+            <div class="toast-title">${titles[type] || titles.info}</div>
+            <div class="toast-message">${message}</div>
+          </div>
+          <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+        `;
+
+        toastContainer.appendChild(toast);
+
+        // Trigger animation
+        setTimeout(() => {
+          toast.classList.add("show");
+        }, 10);
+
+        // Auto-remove after duration
+        setTimeout(() => {
+          toast.classList.remove("show");
+          setTimeout(() => {
+            if (toast.parentElement) {
+              toast.remove();
+            }
+          }, 300);
+        }, duration);
+      }
+
+      window.addEventListener("DOMContentLoaded", async () => {
+        try {
+          const statsResp = await fetch(`${API_URL}/stats`);
+          if (!statsResp.ok) throw new Error("Failed to fetch stats");
+
+          const stats = await statsResp.json();
+
+          if (!stats.has_saved_data) {
+            showToast(
+              "No working_data.csv found. The server will auto-load from files/unique_ein_spons.csv.",
+              "info",
+              5000
+            );
+          }
+
+          await loadEINs();
+          mainContent.classList.add("active");
+        } catch (error) {
+          showToast(`Error: ${error.message}`, "error", 5000);
         }
+      });
 
-        await loadEINs();
-        mainContent.classList.add('active');
-    } catch (error) {
-        alert(error.message);
-    }
-});
+      // Helper function to update loading status
+      function setLoadingStatus(message, type = "loading") {
+        loadingStatus.className = `loading-status ${type}`;
+        if (type === "loading") {
+          loadingStatus.innerHTML = `<span class="spinner"></span>${message}`;
+        } else {
+          loadingStatus.textContent = message;
+        }
+      }
 
-async function loadEINs() {
-    const resp = await fetch(`${API_URL}/eins`);
-    allEINs = await resp.json();
+      function clearLoadingStatus() {
+        loadingStatus.textContent = "";
+        loadingStatus.className = "loading-status";
+      }
 
-    const fragment = document.createDocumentFragment();
-    allEINs.forEach(e => {
-        const option = document.createElement('option');
-        option.value = e.ein;
-        option.textContent = `${e.ein}${e.is_edited ? " ✔" : ""}`;
-        fragment.appendChild(option);
-    });
+      async function loadEINs(page = 1) {
+        if (isLoading) return;
+        if (page < 1) return;
 
-    einSelect.innerHTML = '';
-    einSelect.appendChild(fragment);
+        isLoading = true;
+        setLoadingStatus(`Loading page ${page}...`, "loading");
+        updatePageButtons();
 
-    currentIndex = 0;
-    einSelect.selectedIndex = 0;
-    await loadEINData();
-}
+        try {
+          const resp = await fetch(
+            `${API_URL}/eins?page=${page}&page_size=${PAGE_SIZE}`
+          );
+          if (!resp.ok) throw new Error("Failed to fetch EINs");
 
-einSelect.addEventListener('change', async () => {
-    currentIndex = einSelect.selectedIndex;
-    await loadEINData();
-});
+          const data = await resp.json();
+          const newEINs = data.items;
+          const pagination = data.pagination;
 
-async function loadEINData() {
-    const ein = allEINs[currentIndex].ein;
-    const resp = await fetch(`${API_URL}/ein/${ein}`);
-    currentEINData = await resp.json();
+          // Always replace EINs (page-based navigation)
+          allEINs = newEINs;
+          einList.innerHTML = "";
+          currentIndex = 0;
 
-    document.getElementById('currentEIN').textContent = ein;
-    document.getElementById('totalNames').textContent = currentEINData.total_names;
+          // Add new EIN items to list
+          const fragment = document.createDocumentFragment();
 
-    // OPTIMIZED: Use DocumentFragment for batch DOM insertion
-    const fragment = document.createDocumentFragment();
-    const markedSet = new Set(currentEINData.marked_names || []);
-    
-    currentEINData.unique_names_v2.forEach((name, idx) => {
-        const div = document.createElement('div');
-        div.className = 'name-item';
-        
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = name;
-        checkbox.id = `name_${idx}`;
-        checkbox.checked = markedSet.has(name); // Restore marked state
-        
-        const label = document.createElement('label');
-        label.htmlFor = `name_${idx}`;
-        label.textContent = name;
-        
-        div.appendChild(checkbox);
-        div.appendChild(label);
-        fragment.appendChild(div);
-    });
+          newEINs.forEach((e, idx) => {
+            const item = document.createElement("div");
+            item.className = "ein-item";
+            item.dataset.ein = e.ein;
+            item.dataset.index = idx;
+            item.textContent = `${e.ein}${e.is_edited ? " ✔" : ""}`;
 
-    namesList.innerHTML = '';
-    namesList.appendChild(fragment);
+            // Add click handler
+            item.addEventListener("click", () => {
+              selectEIN(idx);
+            });
 
-    companyNameInput.value = currentEINData.new_name ?? "";
-    document.getElementById('newNameStatus').textContent =
-        currentEINData.new_name ? "Yes" : "No";
+            fragment.appendChild(item);
+          });
 
-    updateSelectedCount();
-}
+          einList.appendChild(fragment);
 
-// OPTIMIZED: Debounced count update
-let countUpdateTimeout;
-function updateSelectedCount() {
-    clearTimeout(countUpdateTimeout);
-    countUpdateTimeout = setTimeout(() => {
-        const checked = namesList.querySelectorAll('input[type="checkbox"]:checked').length;
-        document.getElementById('selectedCount').textContent = checked;
-    }, 50);
-}
+          // Update pagination state
+          currentPage = pagination.page;
+          totalPages = pagination.total_pages;
 
-// Use event delegation for better performance
-namesList.addEventListener('change', (e) => {
-    if (e.target.type === 'checkbox') {
+          // Update page info and buttons
+          pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+          updatePageButtons();
+
+          // Clear loading status
+          clearLoadingStatus();
+
+          // Select first item
+          if (allEINs.length > 0) {
+            currentIndex = 0;
+            await selectEIN(0);
+          }
+        } catch (error) {
+          setLoadingStatus(`Error: ${error.message}`, "error");
+          console.error("Error loading EINs:", error);
+          // Clear error after 5 seconds
+          setTimeout(() => {
+            clearLoadingStatus();
+          }, 5000);
+        } finally {
+          isLoading = false;
+          updatePageButtons();
+        }
+      }
+
+      // Update page navigation buttons
+      function updatePageButtons() {
+        prevPageBtn.disabled = currentPage <= 1 || isLoading;
+        nextPageBtn.disabled = currentPage >= totalPages || isLoading;
+
+        prevPageBtn.style.opacity = prevPageBtn.disabled ? "0.5" : "1";
+        nextPageBtn.style.opacity = nextPageBtn.disabled ? "0.5" : "1";
+      }
+
+      // Previous page button handler
+      prevPageBtn.addEventListener("click", async () => {
+        if (currentPage > 1 && !isLoading) {
+          await loadEINs(currentPage - 1);
+        }
+      });
+
+      // Next page button handler
+      nextPageBtn.addEventListener("click", async () => {
+        if (currentPage < totalPages && !isLoading) {
+          await loadEINs(currentPage + 1);
+        }
+      });
+
+      // Function to select an EIN by index
+      async function selectEIN(index) {
+        if (index >= 0 && index < allEINs.length) {
+          currentIndex = index;
+          updateActiveEIN();
+          await loadEINData();
+        }
+      }
+
+      // Update active EIN visual state
+      function updateActiveEIN() {
+        const items = einList.querySelectorAll(".ein-item");
+        items.forEach((item, idx) => {
+          const itemIndex = parseInt(item.dataset.index);
+          if (itemIndex === currentIndex) {
+            item.classList.add("active");
+            // Scroll into view if needed
+            item.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          } else {
+            item.classList.remove("active");
+          }
+        });
+      }
+
+      async function loadEINData() {
+        if (allEINs.length === 0 || currentIndex >= allEINs.length) return;
+
+        const ein = allEINs[currentIndex].ein;
+        setLoadingStatus(`Loading EIN ${ein}...`, "loading");
+
+        try {
+          const resp = await fetch(`${API_URL}/ein/${ein}`);
+          if (!resp.ok) throw new Error("Failed to fetch EIN data");
+
+          currentEINData = await resp.json();
+
+          document.getElementById("currentEIN").textContent = ein;
+          document.getElementById("totalNames").textContent =
+            currentEINData.total_names;
+
+          // OPTIMIZED: Use DocumentFragment for batch DOM insertion
+          const fragment = document.createDocumentFragment();
+          const markedSet = new Set(currentEINData.marked_names || []);
+
+          currentEINData.unique_names_v2.forEach((name, idx) => {
+            const div = document.createElement("div");
+            div.className = "name-item";
+
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.value = name;
+            checkbox.id = `name_${idx}`;
+            checkbox.checked = markedSet.has(name); // Restore marked state
+
+            const label = document.createElement("label");
+            label.htmlFor = `name_${idx}`;
+            label.textContent = name;
+
+            div.appendChild(checkbox);
+            div.appendChild(label);
+            fragment.appendChild(div);
+          });
+
+          namesList.innerHTML = "";
+          namesList.appendChild(fragment);
+
+          companyNameInput.value = currentEINData.new_name ?? "";
+          document.getElementById("newNameStatus").textContent =
+            currentEINData.new_name ? "Yes" : "No";
+
+          updateSelectedCount();
+
+          // Clear loading status on success
+          clearLoadingStatus();
+        } catch (error) {
+          setLoadingStatus(`Error loading EIN: ${error.message}`, "error");
+          console.error("Error loading EIN data:", error);
+          setTimeout(() => {
+            clearLoadingStatus();
+          }, 3000);
+        }
+      }
+
+      // OPTIMIZED: Debounced count update
+      let countUpdateTimeout;
+      function updateSelectedCount() {
+        clearTimeout(countUpdateTimeout);
+        countUpdateTimeout = setTimeout(() => {
+          const checked = namesList.querySelectorAll(
+            'input[type="checkbox"]:checked'
+          ).length;
+          document.getElementById("selectedCount").textContent = checked;
+        }, 50);
+      }
+
+      // Use event delegation for better performance
+      namesList.addEventListener("change", (e) => {
+        if (e.target.type === "checkbox") {
+          updateSelectedCount();
+        }
+      });
+
+      // OPTIMIZED: Direct property manipulation, no reflow
+      document.getElementById("selectAllBtn").addEventListener("click", () => {
+        const boxes = namesList.querySelectorAll('input[type="checkbox"]');
+        boxes.forEach((b) => (b.checked = true));
         updateSelectedCount();
-    }
-});
+      });
 
-// OPTIMIZED: Direct property manipulation, no reflow
-document.getElementById('selectAllBtn').addEventListener('click', () => {
-    const boxes = namesList.querySelectorAll('input[type="checkbox"]');
-    boxes.forEach(b => b.checked = true);
-    updateSelectedCount();
-});
-
-document.getElementById('deselectAllBtn').addEventListener('click', () => {
-    const boxes = namesList.querySelectorAll('input[type="checkbox"]');
-    boxes.forEach(b => b.checked = false);
-    updateSelectedCount();
-});
-
-document.getElementById('prevBtn').addEventListener('click', async () => {
-    if (currentIndex > 0) {
-        currentIndex--;
-        einSelect.selectedIndex = currentIndex;
-        await loadEINData();
-    }
-});
-
-document.getElementById('nextBtn').addEventListener('click', async () => {
-    if (currentIndex < allEINs.length - 1) {
-        currentIndex++;
-        einSelect.selectedIndex = currentIndex;
-        await loadEINData();
-    }
-});
-
-// document.getElementById('resetBtn').addEventListener('click', loadEINData);
-
-// FIXED: Now just tracks marked names, doesn't remove anything
-document.getElementById('saveBtn').addEventListener('click', async () => {
-    const ein = allEINs[currentIndex].ein;
-
-    // Get CHECKED names (these are just marked for review)
-    const allCheckboxes = namesList.querySelectorAll('input[type="checkbox"]');
-    const markedNames = [];
-    
-    allCheckboxes.forEach(checkbox => {
-        if (checkbox.checked) {
-            markedNames.push(checkbox.value);
-        }
-    });
-
-    const newName = companyNameInput.value.trim();
-
-    if (!newName && markedNames.length === 0) {
-        alert('Please either enter a company name or mark some names for review.');
-        return;
-    }
-
-    const payload = {
-        spons_dfe_ein: ein,
-        marked_names: markedNames,  // Just tracking marked names
-        new_name: newName || null
-    };
-
-    try {
-        const resp = await fetch(`${API_URL}/ein/${ein}/save`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+      document
+        .getElementById("deselectAllBtn")
+        .addEventListener("click", () => {
+          const boxes = namesList.querySelectorAll('input[type="checkbox"]');
+          boxes.forEach((b) => (b.checked = false));
+          updateSelectedCount();
         });
 
-        const result = await resp.json();
-        alert(result.message);
+      // FIXED: Now just tracks marked names, doesn't remove anything
+      document.getElementById("saveBtn").addEventListener("click", async () => {
+        const saveBtn = document.getElementById("saveBtn");
+        const ein = allEINs[currentIndex].ein;
 
-        // Update UI
-        allEINs[currentIndex].is_edited = true;
-        einSelect.options[currentIndex].textContent = `${ein} ✔`;
-        
-        // Reload data to show updated state
-        await loadEINData();
-    } catch (error) {
-        alert('Error saving changes: ' + error.message);
-    }
-});
-</script>
+        // Get CHECKED names (these are just marked for review)
+        const allCheckboxes = namesList.querySelectorAll(
+          'input[type="checkbox"]'
+        );
+        const markedNames = [];
 
-</body>
+        allCheckboxes.forEach((checkbox) => {
+          if (checkbox.checked) {
+            markedNames.push(checkbox.value);
+          }
+        });
+
+        const newName = companyNameInput.value.trim();
+
+        if (!newName && markedNames.length === 0) {
+          setLoadingStatus(
+            "Please either enter a company name or mark some names for review.",
+            "error"
+          );
+          setTimeout(() => {
+            clearLoadingStatus();
+          }, 3000);
+          return;
+        }
+
+        const payload = {
+          spons_dfe_ein: ein,
+          marked_names: markedNames, // Just tracking marked names
+          new_name: newName || null,
+        };
+
+        // Disable button and show loading state
+        saveBtn.disabled = true;
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = "💾 Saving...";
+        setLoadingStatus(`Saving changes for EIN ${ein}...`, "loading");
+
+        try {
+          const resp = await fetch(`${API_URL}/ein/${ein}/save`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!resp.ok) {
+            const errorData = await resp.json().catch(() => ({}));
+            throw new Error(errorData.detail || "Failed to save changes");
+          }
+
+          const result = await resp.json();
+
+          // Update UI
+          allEINs[currentIndex].is_edited = true;
+
+          // Update the EIN item in the list
+          const einItem = einList.querySelector(`[data-ein="${ein}"]`);
+          if (einItem) {
+            einItem.textContent = `${ein} ✔`;
+          }
+
+          // Show success popup
+          const successMessage =
+            result.message || "Changes saved successfully!";
+          showToast(successMessage, "success", 3000);
+          clearLoadingStatus();
+
+          // Reload data to show updated state (without showing loading status)
+          const respData = await fetch(`${API_URL}/ein/${ein}`);
+          if (respData.ok) {
+            currentEINData = await respData.json();
+
+            document.getElementById("totalNames").textContent =
+              currentEINData.total_names;
+            companyNameInput.value = currentEINData.new_name ?? "";
+            document.getElementById("newNameStatus").textContent =
+              currentEINData.new_name ? "Yes" : "No";
+
+            // Update checkboxes
+            const fragment = document.createDocumentFragment();
+            const markedSet = new Set(currentEINData.marked_names || []);
+
+            currentEINData.unique_names_v2.forEach((name, idx) => {
+              const div = document.createElement("div");
+              div.className = "name-item";
+
+              const checkbox = document.createElement("input");
+              checkbox.type = "checkbox";
+              checkbox.value = name;
+              checkbox.id = `name_${idx}`;
+              checkbox.checked = markedSet.has(name);
+
+              const label = document.createElement("label");
+              label.htmlFor = `name_${idx}`;
+              label.textContent = name;
+
+              div.appendChild(checkbox);
+              div.appendChild(label);
+              fragment.appendChild(div);
+            });
+
+            namesList.innerHTML = "";
+            namesList.appendChild(fragment);
+            updateSelectedCount();
+          }
+
+          // Move to next EIN after successful save
+          setTimeout(async () => {
+            if (currentIndex < allEINs.length - 1) {
+              // Move to next EIN in current page
+              await selectEIN(currentIndex + 1);
+            } else if (currentPage < totalPages) {
+              // Move to next page and select first EIN
+              await loadEINs(currentPage + 1);
+              if (allEINs.length > 0) {
+                await selectEIN(0);
+              }
+            }
+          }, 500); // Small delay to let toast appear first
+        } catch (error) {
+          showToast(`Error: ${error.message}`, "error", 4000);
+          console.error("Error saving changes:", error);
+          clearLoadingStatus();
+        } finally {
+          // Re-enable button
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+        }
+      });
+    </script>
+  </body>
 </html>
