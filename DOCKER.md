@@ -186,11 +186,26 @@ Then set `RELOAD=true` in your `.env` file.
 
 ## Building for Different Platforms
 
-```bash
-# Build for specific platform
-docker buildx build --platform linux/amd64 -t ein-simplifier .
+### AWS ECS (Recommended)
 
-# Build for ARM (e.g., Raspberry Pi)
-docker buildx build --platform linux/arm64 -t ein-simplifier .
+The Dockerfile is configured to build for `linux/amd64` by default, which is required for AWS ECS. The Makefile automatically uses this platform:
+
+```bash
+make docker-build
 ```
+
+### Manual Platform Specification
+
+```bash
+# Build for AWS ECS / x86_64 (default)
+docker build --platform linux/amd64 -t ein-simplifier .
+
+# Build for ARM (e.g., Raspberry Pi, Apple Silicon local testing)
+docker buildx build --platform linux/arm64 -t ein-simplifier .
+
+# Build for multiple platforms
+docker buildx build --platform linux/amd64,linux/arm64 -t ein-simplifier .
+```
+
+**Note**: If you're building on Apple Silicon (M1/M2/M3) and deploying to AWS ECS, you must build for `linux/amd64` to avoid "exec format error". The Dockerfile now includes `--platform=linux/amd64` in the FROM statements to ensure compatibility.
 

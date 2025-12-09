@@ -370,7 +370,7 @@
 
           <div class="mode-toggle">
             <strong>Mode: Mark Names for Review</strong><br />
-            <small>✓ Check names that need attention or review.</small>
+            <small>✓ Check names that share same EIN.</small>
           </div>
 
           <h3 style="margin-bottom: 15px">
@@ -411,9 +411,11 @@
 
     <script>
       // API URL - can be set via window.API_URL or defaults to current origin
-      const API_URL = window.API_URL || (window.location.origin.includes('localhost') 
-        ? 'http://localhost:8000' 
-        : window.location.origin);
+      const API_URL =
+        window.API_URL ||
+        (window.location.origin.includes("localhost")
+          ? "http://localhost:8000"
+          : window.location.origin);
       const PAGE_SIZE = 20;
       let currentEINData = null;
       let allEINs = [];

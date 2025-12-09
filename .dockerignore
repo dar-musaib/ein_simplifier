@@ -56,7 +56,7 @@ logs/
 .coverage
 htmlcov/
 
-# Storage (will be mounted as volume)
+# Storage (will be mounted as volume for local dev, but included in image for ECS)
 storage/
-files/
+# files/ - Commented out to include CSV files in Docker image for ECS deployment
 

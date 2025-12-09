@@ -177,8 +177,8 @@ PORT := 8000
 docker-build:
 	@echo "Building Docker image..."
 	@if command -v docker > /dev/null; then \
-		docker build -t $(IMAGE_NAME) .; \
-		echo "✓ Image built successfully"; \
+		docker build --platform linux/amd64 -t $(IMAGE_NAME) .; \
+		echo "✓ Image built successfully (linux/amd64 for AWS ECS compatibility)"; \
 	else \
 		echo "✗ Docker not found. Please install Docker."; \
 		exit 1; \
