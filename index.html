@@ -425,6 +425,21 @@
       .ein-result-item:hover {
         background: #f0f0f0;
       }
+      .page-jump {
+        margin-top: 10px;
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .page-jump input {
+        width: 70px;
+        padding: 6px;
+        border-radius: 6px;
+        border: 1px solid #050505;
+        font-size: 13px;
+      }
+
     </style>
   </head>
 
@@ -509,12 +524,22 @@
               Next Page →
             </button>
           </div>
+          <!--new go button-->
+          <div class="page-jump">
+            <input 
+              type="number" 
+              id="goToPageInput" 
+              min="1" 
+              placeholder="Page #" 
+            />
+            <button class="btn btn-secondary" id="goToPageBtn">Go</button>
+          </div>
           <div
             id="pageInfo"
             style="
               margin-top: 10px;
               font-size: 12px;
-              color: #666;
+              color: #63d8a1;
               text-align: center;
             "
           ></div>
@@ -884,6 +909,26 @@
           await loadEINs(currentPage + 1);
         }
       });
+
+      document.getElementById("goToPageBtn").addEventListener("click", async () => {
+      const input = document.getElementById("goToPageInput");
+      let targetPage = parseInt(goToPageInput.value.trim());
+
+      if (isNaN(targetPage) || targetPage < 1 || targetPage > totalPages) {
+        showToast(`Please enter a valid page between 1 and ${totalPages}`, "error");
+        return;
+      }
+      await loadEINs(targetPage);
+      goToPageInput.value = "";
+      goToPageInput.focus();
+    });
+
+    document.getElementById("goToPageInput").addEventListener("keydown", async (e) => {
+    if (e.key === "Enter") {
+      document.getElementById("goToPageBtn").click();
+    }
+  });
+
 
       async function selectEIN(index) {
         if (index >= 0 && index < allEINs.length) {
