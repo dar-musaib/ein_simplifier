@@ -113,6 +113,7 @@ def load_working_file():
             WORKING_FILE,
             dtype={'spons_dfe_ein': 'Int64', 'new_name': 'object', 'completion_status': 'object'}
         )
+        df = df.dropna(subset=['spons_dfe_ein'])
         
         df["unique_names_v2"] = df["unique_names_v2"].apply(parse_names)
 
@@ -155,6 +156,7 @@ def load_source_file():
             SOURCE_FILE,
             dtype={'spons_dfe_ein': 'Int64'}
         )
+        df = df.dropna(subset=['spons_dfe_ein'])
         df["unique_names_v2"] = df["unique_names_v2"].apply(parse_names)
 
         if "new_name" not in df.columns:
@@ -276,7 +278,12 @@ async def get_all_eins(page: int = 1, page_size: int = 20):
     # Get completion status for each EIN
     items = []
     for ein in paginated_eins:
-        row = df[df["spons_dfe_ein"] == ein].iloc[0]
+        row = df[df["spons_dfe_ein"] == ein]
+    
+        if row.empty:
+            raise HTTPException(status_code=404, detail="EIN not found")
+
+        row = row.iloc[0]
         status = calculate_completion_status(row)
         items.append({
             "ein": ein,
@@ -500,15 +507,22 @@ async def get_stats():
     done_count = 0
     partially_done_count = 0
     not_started_count = 0
-    
-    for idx, row in df.iterrows():
-        status = calculate_completion_status(row)
-        if status == "done":
-            done_count += 1
-        elif status == "partially_done":
-            partially_done_count += 1
-        elif status == "not_started":
-            not_started_count += 1
+    # for idx, row in df.iterrows():
+    #     status = calculate_completion_status(row)
+    #     if status == "done":
+    #         done_count += 1
+    #     elif status == "partially_done":
+    #         partially_done_count += 1
+    #     elif status == "not_started":
+    #         not_started_count += 1
+    done_count = int((df["completion_status"] == "done").sum())
+    partially_done_count = int((df["completion_status"] == "partially_done").sum())
+    not_started_count = len(df)-done_count-partially_done_count
+
+    # counts = df["completion_status"].value_counts()
+    # done_count = int(counts.get("done", 0))
+    # partially_done_count = int(counts.get("partially_done", 0))
+    # not_started_count = len(df) - done_count - partially_done_count
 
     return {
         "total_eins": len(df),
