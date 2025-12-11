@@ -818,7 +818,7 @@
       function clearLoadingStatus() {
         loadingStatus.textContent = "";
         loadingStatus.className = "loading-status";
-      }
+      } 
 
       async function loadEINs(page = 1) {
         if (isLoading) return;
@@ -850,9 +850,22 @@
             item.dataset.ein = e.ein;
             item.dataset.index = idx;
 
-            const einText = document.createElement("span");
+            const einContainer = document.createElement("div");
+            einContainer.style.cssText = "flex: 1; min-width: 0;";
+            
+            const einText = document.createElement("div");
+            einText.style.cssText = "font-weight: 600;";
             einText.textContent = e.ein;
-            item.appendChild(einText);
+            
+            if (e.display_name) {
+              const nameText = document.createElement("div");
+              nameText.style.cssText = "font-size: 11px; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;";
+              nameText.textContent = e.display_name;
+              einContainer.appendChild(nameText);
+            }
+            
+            einContainer.prepend(einText);
+            item.appendChild(einContainer);
 
             if (
               e.completion_status === "done" ||
@@ -1298,20 +1311,41 @@
 
       // render matches into the dropdown
       function renderEinMatches(matches) {
-        if (!matches || matches.length === 0) {
-          einSearchResults.style.display = "none";
-          einSearchResults.innerHTML = "";
-          return;
-        }
+  if (!matches || matches.length === 0) {
+    einSearchResults.style.display = "none";
+    einSearchResults.innerHTML = "";
+    return;
+  }
 
-        einSearchResults.innerHTML = matches
-          .map(
-            (ein) =>
-              `<div class="ein-result-item" data-ein="${ein}" style="padding:8px;cursor:pointer;border-bottom:1px solid #f2f2f2;">${ein}</div>`
+      // Fetch display names for each EIN
+      const matchesWithNames = matches.map(async (ein) => {
+        try {
+          const resp = await fetch(`${API_URL}/ein/${ein}`);
+          if (resp.ok) {
+            const data = await resp.json();
+            const displayName = data.new_name || 
+                              (data.unique_names_v2 && data.unique_names_v2.length > 0 
+                                ? data.unique_names_v2[0] 
+                                : '');
+            return { ein, displayName };
+          }
+        } catch (err) {
+          console.error(`Failed to fetch name for EIN ${ein}:`, err);
+        }
+        return { ein, displayName: '' };
+      });
+
+      Promise.all(matchesWithNames).then(results => {
+        einSearchResults.innerHTML = results
+          .map(({ ein, displayName }) => 
+            `<div class="ein-result-item" data-ein="${ein}" style="padding:8px;cursor:pointer;border-bottom:1px solid #f2f2f2;">
+              <strong>${ein}</strong>${displayName ? `<span style="margin-left:10px;color:#666;font-size:13px;">${displayName}</span>` : ''}
+            </div>`
           )
           .join("");
         einSearchResults.style.display = "block";
-      }
+      });
+    }
 
       // search handler
       einSearchInput.addEventListener("input", (ev) => {
@@ -1442,7 +1476,7 @@
           clearLoadingStatus();
 
           // Refresh top stats after save
-          // await refreshStats();
+          await refreshStats();
 
           const respData = await fetch(`${API_URL}/ein/${ein}`);
           if (respData.ok) {
