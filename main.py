@@ -260,7 +260,7 @@ async def startup_event():
 
 @app.get("/eins")
 async def get_all_eins(page: int = 1, page_size: int = 20):
-    """Return paginated list of EINs with edit status"""
+    """Return paginated list of EINs with edit status and display names"""
     if "df" not in data_store:
         raise HTTPException(status_code=400, detail="Data not loaded")
     
@@ -275,20 +275,25 @@ async def get_all_eins(page: int = 1, page_size: int = 20):
     
     paginated_eins = all_eins[start_idx:end_idx]
     
-    # Get completion status for each EIN
     items = []
     for ein in paginated_eins:
-        row = df[df["spons_dfe_ein"] == ein]
-    
-        if row.empty:
-            raise HTTPException(status_code=404, detail="EIN not found")
-
-        row = row.iloc[0]
+        row = df[df["spons_dfe_ein"] == ein].iloc[0]
         status = calculate_completion_status(row)
+        
+        # Get display name
+        display_name = ""
+        if pd.notna(row.get("new_name")):
+            display_name = str(row["new_name"])
+        else:
+            names = row["unique_names_v2"] if isinstance(row["unique_names_v2"], list) else []
+            if names:
+                display_name = names[0]
+        
         items.append({
             "ein": ein,
             "is_edited": ein in edited,
-            "completion_status": status
+            "completion_status": status,
+            "display_name": display_name
         })
     
     return {
